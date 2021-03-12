@@ -1,0 +1,15 @@
+#ifndef __DEV_WIRELESS_THREAD_ADDITIONAL_DEVICE_H
+#define __DEV_WIRELESS_THREAD_ADDITIONAL_DEVICE_H
+
+void dev_wireless_thread_addional_node_param_init(void);
+wireless_thread_node_param_t *dev_wireless_get_thread_additional_node_param(void);
+void dev_wireless_set_thread_additional_node_param(wireless_thread_node_param_t *wireless_thread_node_param);
+void dev_wireless_thread_additional_set_timeout(u32 ms_timeout);
+void dev_wireless_thread_additional_set_param(WIRE_TASK_ID task_id, wire_thread_handle_pfunc hand_func, u32 timeover);
+void dev_wireless_thread_additional_param_clean(void);
+void dev_wireless_thread_additional_set_result(WIRE_AT_RESULT_E result);
+s32 dev_wireless_thread_additional_task_is_change(WIRE_TASK_ID task_id);
+s32 dev_wireless_thread_additional_is_free(void);
+
+#endif
+

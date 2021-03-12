@@ -1,0 +1,100 @@
+
+
+
+#ifndef _PCIPKMANAGE_H_
+#define _PCIPKMANAGE_H_
+
+
+
+typedef enum _TERMINAL_PK_TYPE_
+{
+	PK_ACQUIRER,
+	PK_ACQUIRERBAK,
+	PK_PREVENT = 20,
+	PK_TRENDIT_ROOT,
+	PK_ACQUIRER_ROOT,
+	PK_USBBOOT
+	
+}TERMINAL_PK_TYPE;
+
+#define RSA2048PUBLICKEYDATALEN           292
+
+#define IPKDATALEN                        164
+
+
+#define PUBLICKEY_VERSION_OFFSET   0
+#define PUBLICKEY_VERSION_SIZE     8
+
+//8
+#define PUBLICKEY_ISSUER_OFFSET    (PUBLICKEY_VERSION_SIZE+PUBLICKEY_VERSION_OFFSET)
+#define PUBLICKEY_ISSUER_SIZE      16
+
+//24
+#define PUBLICKEY_SN_OFFSET        (PUBLICKEY_ISSUER_OFFSET+PUBLICKEY_ISSUER_SIZE)
+#define PUBLICKEY_SN_SIZE          32
+
+//56
+#define PUBLICKEY_ARITHIND_OFFSET  (PUBLICKEY_SN_OFFSET+PUBLICKEY_SN_SIZE)
+#define PUBLICKEY_ARITHIND_SIZE    8
+
+//64
+#define PUBLICKEY_EXPIREDATE_OFFSET (PUBLICKEY_ARITHIND_OFFSET+PUBLICKEY_ARITHIND_SIZE)
+#define PUBLICKEY_EXPIREDATE_SIZE  8
+
+//72
+#define PUBLICKEY_IPKDATA_OFFSET   (PUBLICKEY_EXPIREDATE_OFFSET+PUBLICKEY_EXPIREDATE_SIZE)
+#define PUBLICKEY_IPKDATA_SIZE     (132+32+720)
+
+
+//956
+#define PUBLICKEY_UPPERISSUER_OFFSET (PUBLICKEY_IPKDATA_OFFSET+PUBLICKEY_IPKDATA_SIZE)
+#define PUBLICKEY_UPPERISSUER_SIZE   16
+
+//972
+#define PUBLICKEY_UPPERSN_OFFSET    (PUBLICKEY_UPPERISSUER_OFFSET+PUBLICKEY_UPPERISSUER_SIZE)
+#define PUBLICKEY_UPPERSN_SIZE       32
+
+//1004
+#define PUBLICKEY_CERTSIGN_OFFSET   (PUBLICKEY_UPPERSN_OFFSET+PUBLICKEY_UPPERSN_SIZE)
+#define PUBLICKEY_CERTSIGN_SIZE     32
+
+//1024
+#define PUBLICKEY_EPCERTSIGN_OFFSET (PUBLICKEY_CERTSIGN_OFFSET+PUBLICKEY_CERTSIGN_SIZE)
+#define PUBLICKEY_EPCERTSIGN_SIZE   24
+
+#define PUBLICKEY_INFO_STRUCT_SIZE   (PUBLICKEY_EPCERTSIGN_OFFSET+PUBLICKEY_EPCERTSIGN_SIZE)    
+
+
+#define PUBLICKEY_MAX_NUMBER    64      //total 1024bytes
+//total 1048bytes
+
+typedef struct _RSA_PUBLICKEY_INFO
+{
+	u8 Version[PUBLICKEY_VERSION_SIZE];              //Version
+	u8 Issuer[PUBLICKEY_ISSUER_SIZE];                //Issuer
+    u8 SN[PUBLICKEY_SN_SIZE];                        //Serial Number
+    u8 ArithInd[PUBLICKEY_ARITHIND_SIZE];            //arithmetic index
+    u8 ExpireDate[PUBLICKEY_EXPIREDATE_SIZE];        // Expire Date
+    u8 IPKData[PUBLICKEY_IPKDATA_SIZE];              // Public key information
+    u8 Upperissuer[PUBLICKEY_ISSUER_SIZE];           //issuer of the upper level 
+	u8 UpperSN[PUBLICKEY_SN_SIZE];                   //SN of th upperlevel
+    u8 CertSign[PUBLICKEY_CERTSIGN_SIZE];            // certificate signature
+    //u8 EncipherCertSign[PUBLICKEY_EPCERTSIGN_SIZE];  //encrypted certificate signature   //sxl total 1024bits
+}RSA_PUBLICKEY_INFO;
+
+
+
+
+#define HASH256RSA2048  0
+#define HASH160RSA1024  1
+
+
+extern void pcipkmanage_checkmainpk(void);
+extern s32 pcipkmanage_readpkdata(TERMINAL_PK_TYPE pktype,u8 *pkdata);
+extern s32 pcipkmanage_savepk(TERMINAL_PK_TYPE pktype,RSA_PUBLICKEY_INFO *publickeyinfo);
+extern s32 pciarith_rsa_readIPKdata(u8 checkmode,u8 *checkdata,RSA_PUBLICKEY_INFO *readpublickeyinfo);
+extern s32 pcipkmanage_readpk(TERMINAL_PK_TYPE pktype,RSA_PUBLICKEY_INFO *publickeyinfo);
+
+
+#endif
+
