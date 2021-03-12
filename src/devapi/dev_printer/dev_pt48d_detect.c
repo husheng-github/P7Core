@@ -15,41 +15,45 @@ uint8_t printersts,papercnt,platencnt,bm_cnt;
     uint8_t PrintOn_Flag = FALSE;
 #endif
 
-
 static int g_paper_snsdetect_count = 0;
+extern int print_nopaper_count;
 
-extern void TPPaperSNSDetect(uint8_t c)//488?????,486?????
-{
-        //DBG_STR("TPPaperSNSDetect()\r\n");
-        
-        if (TPGetPaperDetect() == 0) // 有纸
-        {
-                //DBG_STR("有纸\r\n");
+const uint16_t restbl[25] = {8430,6230,4660,3520,2690,2080,
+                        1610,1240, 968, 757, 595, 471,
+                         375, 300, 242, 196, 159, 131,
+                         108,  89,  74,  62,  52,  44,37};
 
-                //dev_led_sta_set(LED_BLUE_NO, 1);
-                
-                if((printersts & PAPER_READY) == 0)
-                {
-                        printersts &= ~PAPER_SNS;
-                        printersts |= PAPER_READY;
-                        //DBG_STR("进纸\r\n");
-                }
-        }
-        else  // 无纸
-        {
-                //DBG_STR("无纸\r\n");
-                
-                if((printersts & PAPER_READY) == PAPER_READY)
-                {
-                        printersts |= PAPER_SNS;
-                        printersts &= ~PAPER_READY;
-                        //DBG_STR("出纸\r\n");
-                }
-        }
+
+void TPPaperSNSDetect(uint8_t c)
+{   
+    if (TPGetPaperDetect() == 0) // 有纸
+    {
+            //DBG_STR("有纸\r\n");
+
+            //dev_led_sta_set(LED_BLUE_NO, 1);
+            
+            if((printersts & PAPER_READY) == 0)
+            {
+                    printersts &= ~PAPER_SNS;
+                    printersts |= PAPER_READY;
+                    //DBG_STR("进纸\r\n");
+            }
+    }
+    else  // 无纸
+    {
+            //DBG_STR("无纸\r\n");
+            
+            if((printersts & PAPER_READY) == PAPER_READY)
+            {
+                    printersts |= PAPER_SNS;
+                    printersts &= ~PAPER_READY;
+                    //DBG_STR("出纸\r\n");
+            }
+    }
 
 }
 
-extern uint8_t TPPrinterReady(void)
+uint8_t TPPrinterReady(void)
 {
 #if  0
     return TRUE;
@@ -66,7 +70,6 @@ extern uint8_t TPPrinterReady(void)
 #endif
 }
 
-
 extern uint8_t TPPrinterMark(void)
 {
     if(printersts & BLACKMARKR_FLAG)
@@ -79,8 +82,6 @@ extern uint8_t TPPrinterMark(void)
     }
 }
 
-
-
 /*
 函数    把读取到的AD值，根据上拉或下拉电阻计算对应内部的电阻值
 输入    ad:     读取到的ad值,单位:100欧姆
@@ -89,30 +90,24 @@ extern uint8_t TPPrinterMark(void)
 */
 uint32_t TranVtoR(uint32_t ad,uint32_t adMax,uint32_t uRes,uint32_t dRes)
 {
-        if (uRes)
-        {   // 上拉电阻
-                if (ad >= adMax)
-                        return (ad*uRes);
-                else
-                        return ((ad*uRes)/(adMax-ad));
-        }
-        else
-        {   // 下拉电阻
-                if (ad == 0) ad = 1;
-                return ((adMax-ad)*dRes/ad);
-        }
+    if (uRes)
+    {   // 上拉电阻
+            if (ad >= adMax)
+                    return (ad*uRes);
+            else
+                    return ((ad*uRes)/(adMax-ad));
+    }
+    else
+    {   // 下拉电阻
+            if (ad == 0) ad = 1;
+            return ((adMax-ad)*dRes/ad);
+    }
 }
-
 
 /*
 函数    把热敏机芯的热敏电阻值转换为对应温度
 输入    res     热敏电阻值，单位:100欧姆
-*/
-const uint16_t restbl[25] = {8430,6230,4660,3520,2690,2080,
-                        1610,1240, 968, 757, 595, 471,
-                         375, 300, 242, 196, 159, 131,
-                         108,  89,  74,  62,  52,  44,37};
-                         
+*/                         
 int16_t TranRtoDegree(uint32_t res)
 {
     uint16_t i;
@@ -176,17 +171,6 @@ int16_t TPHTemperature(void)
 
     if(pt_get_exist())
     {
-/*
-        for(i=0;i<3;i++)
-        {
-            ad = (uint32_t)dev_adc_get_value(DEV_ADC_PTR_TM); 
-            
-            //sprintf(cTemp,"---- adc%d = %d  ---- \r\n", i, ad);
-            //drv_com_write(DEBUG_PORT_NO,cTemp,strlen(cTemp));
-
-            temp += ad;
-        }
-*/
         dev_adc_open(DEV_ADC_PTR_TM);
 
         if(dev_adc_get_value(DEV_ADC_PTR_TM, adbuf, 3) < 0)
@@ -229,13 +213,11 @@ int16_t TPHTemperature(void)
     
 }
 
-
 uint8_t TPGetPaperDetect(void)
 {        
         return pt_get_paper_status();
 }
 
-extern int print_nopaper_count;
 extern void TPPaperSNSDetect_interrupt(uint8_t c)//488?????,486?????
 {
 
@@ -259,9 +241,7 @@ extern void TPPaperSNSDetect_interrupt(uint8_t c)//488?????,486?????
                 //DBG_STR("进纸\r\n");
             }
         }
-
 }
-
 
 #endif
 

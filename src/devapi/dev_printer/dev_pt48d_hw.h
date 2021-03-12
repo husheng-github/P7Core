@@ -12,14 +12,33 @@ extern void DBG_DAT(u8 *data,u16 len);
 #define DBG_DAT(data,len) 
 #endif
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define GPIO_PRT_MOT_PWR                        GPIO_PIN_NONE
+#define GPIO_PRT_MOT_PHASE_1A                   GPIO_PIN_PTD2
+#define GPIO_PRT_MOT_PHASE_2A                   GPIO_PIN_PTD3
 
-//================================================
-#define TIMER_TP                0x03  //马达步进使用时钟
-#define TIMER_TP_DET     0x02//0x04  //打印纸及温度检测时钟//定时器冲突，改为定时器2
+#define GPIO_PRT_MOT_PHASE_1B                   GPIO_PIN_PTE0
+#define GPIO_PRT_MOT_PHASE_2B                   GPIO_PIN_PTD11
 
-//================================================
+#define GPIO_PRT_PAPER_DET                      GPIO_PIN_PTD6
+#define GPIO_PRT_TM_DET                         GPIO_PIN_PTC4
+#define GPIO_PRT_LAT                            GPIO_PIN_PTD1 
 
+#define GPIO_PRT_STB1                           GPIO_PIN_PTB1
+#define GPIO_PRT_POWER                          GPIO_PIN_PTD7
+#define GPIO_PRT_SLP                            GPIO_PIN_PTA10
+
+//T3与T1打印不通的管脚定义
+#define GPIO_PRT_MOT_PWR_T3                     GPIO_PIN_PTB0 //pengxuebin,20190818 T3使用
+#define GPIO_PRT_MOT_PHASE_2B_T3                GPIO_PIN_PTB2  //pengxuebin,20190818 T3使用      
+#define GPIO_PRT_POWER_T3                       GPIO_PIN_NONE //pengxuebin,20190818 T3没有该管脚 
+#define GPIO_PRT_SLP_T3                         GPIO_PIN_NONE  //pengxuebin,20190818 T3使用  
+
+#define PRT_SPI_MOSI                            GPIO_PIN_PTA8
+
+#define ARRAY_SIZE(x)    (sizeof(x) / sizeof((x)[0]))
+
+#define TIMER_TP         0x03  //马达步进使用时钟
+#define TIMER_TP_DET     0x02  //打印纸及温度检测时钟//定时器冲突，改为定时器2
 #define TIMER1_MS_TO_CNT(ms)    ((uint32_t)(ms*1000)) // to us
 
 u8 pt_get_exist(void);

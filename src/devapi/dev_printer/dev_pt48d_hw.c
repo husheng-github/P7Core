@@ -6,86 +6,22 @@
 #include "dev_pt48d_hw.h"
 #include "dev_pt48d_detect.h"
 #include "dev_pt48d.h"
-//#define TEST_GPIO 
 
-#if 0
-/*! @brief pt48d printer Pin names */
-enum _pt48dPin_pinNames
-{
-        pinPRT_MOT_PWR              = GPIO_MAKE_PIN(GPIOC_IDX, 0U),
-        pinPRT_MOT_PHASE_1A  = GPIO_MAKE_PIN(GPIOC_IDX, 1U),
-        pinPRT_MOT_PHASE_2A  = GPIO_MAKE_PIN(GPIOC_IDX, 2U),
-        pinPRT_MOT_PHASE_1B  = GPIO_MAKE_PIN(GPIOC_IDX, 3U),
-        pinPRT_MOT_PHASE_2B  = GPIO_MAKE_PIN(GPIOC_IDX, 4U),
-        
-        pinPRT_PAPER_DET          = GPIO_MAKE_PIN(GPIOB_IDX, 0U),   //打印低检测脚
-        pinPRT_TM                             = GPIO_MAKE_PIN(GPIOB_IDX, 1U),  //打印机温度脚
-        
-        pinPRT_LAT                           = GPIO_MAKE_PIN(GPIOB_IDX, 10U), 
-        pinPRT_CLK                          = GPIO_MAKE_PIN(GPIOB_IDX, 11U),
-        
-        pinPRT_DI                               = GPIO_MAKE_PIN(GPIOB_IDX, 16U),
-        pinPRT_STB1                        = GPIO_MAKE_PIN(GPIOB_IDX, 18U),
-        pinPRT_POWER                   = GPIO_MAKE_PIN(GPIOB_IDX, 19U),
-};
-#endif
 static volatile u8 g_printf_prn_power_flg=0;
 static volatile u8 g_printf_moto_flg=0;
-static u32 g_print_moto_timerid=0;
-int print_nopaper_count = 0;
 
-//打印机驱动电压(大电流)
-#define GPIO_PRT_MOT_PWR                        GPIO_PIN_NONE//??pengxuebin,20180825//GPIO_PIN_PTC6
-
-#define GPIO_PRT_MOT_PHASE_1A                   GPIO_PIN_PTD2//GPIO_PIN_PTA7
-
-#define GPIO_PRT_MOT_PHASE_2A                      GPIO_PIN_PTD3//GPIO_PIN_PTA11
- 
-//#define GPIO_PRT_MOT_PHASE_1B                      GPIO_PIN_PTB6
-//#define GPIO_PRT_MOT_PHASE_2B                      GPIO_PIN_PTB7
-
-#define GPIO_PRT_MOT_PHASE_1B                   GPIO_PIN_PTE0//GPIO_PIN_PTB7
-#define GPIO_PRT_MOT_PHASE_2B                   GPIO_PIN_PTD11//GPIO_PIN_PTB6
-
-
-
-#define GPIO_PRT_PAPER_DET                      GPIO_PIN_PTD6//GPIO_PIN_PTC3
-
-#define GPIO_PRT_TM_DET                         GPIO_PIN_PTC4//GPIO_PIN_PTC4
-
-#define GPIO_PRT_LAT                            GPIO_PIN_PTD1 //GPIO_PIN_PTA6
-
-//#define GPIO_PRT_CLK                                          GPIO_PIN_PTB8
-
-//#define GPIO_PRT_DI                                              GPIO_PIN_PTB10
-
-#define GPIO_PRT_STB1                           GPIO_PIN_PTB1//GPIO_PIN_PTC7
-
-//逻辑电压
-#define GPIO_PRT_POWER                          GPIO_PIN_PTD7//GPIO_PIN_PTC8
-
-#define GPIO_PRT_SLP                            GPIO_PIN_PTA10//GPIO_PIN_PTB11
-
-//T3与T1打印不通的管脚定义
-#define GPIO_PRT_MOT_PWR_T3                     GPIO_PIN_PTB0 //pengxuebin,20190818 T3使用
-#define GPIO_PRT_MOT_PHASE_2B_T3                GPIO_PIN_PTB2  //pengxuebin,20190818 T3使用      
-#define GPIO_PRT_POWER_T3                       GPIO_PIN_NONE //pengxuebin,20190818 T3没有该管脚 
-#define GPIO_PRT_SLP_T3                         GPIO_PIN_NONE  //pengxuebin,20190818 T3使用      
-
-static iomux_pin_name_t  g_prt_mot_pwr_pin; 
-static iomux_pin_name_t  g_prt_mot_phase2B_pin;         //MOTB#
-static iomux_pin_name_t  g_prt_power_pin;               //打印逻辑电源控制
-static iomux_pin_name_t  g_prt_slp_pin;                 
+static u32 g_pt_line = 0;  
+static u32 g_print_moto_timerid=0;            
 static u8 g_prt_slp_flg;            //bit0表示打印机，bit1表示非接，对应为1表示打开,0表示关闭
 static u8 g_prt_existflg=0;         //记录是否有打印机标志：0：没有打印机 1:有打印机
-                                    //高4位为打印机控制方式,0：旧打印方式,1:T3打印方式，
-#ifdef TEST_GPIO
- iomux_pin_name_t  g_prt_loop_test_pin; 
-iomux_pin_name_t  g_prt_line_test_pin;
-iomux_pin_name_t  g_prt_hdl_test_pin; 
-iomux_pin_name_t  g_prt_while_test_pin; 
+                                    //高4位为打印机控制方式,0：旧打印方式,1:T3打印方式
 
-#endif
+static iomux_pin_name_t  g_prt_mot_pwr_pin; 
+static iomux_pin_name_t  g_prt_mot_phase2B_pin;   //MOTB#
+static iomux_pin_name_t  g_prt_power_pin;         //打印逻辑电源控制
+static iomux_pin_name_t  g_prt_slp_pin; 
+
+int print_nopaper_count = 0;  
 
 
 #ifdef PT48D_DEV_DEBUG_
@@ -116,86 +52,29 @@ void DBG_DAT(u8 *data,u16 len)
         }
     }
 }
-
 #endif
 
+/**
+ * @brief  判断打印机是否存在
+ * @retval 0-不存在  1-存在
+ * @retval 高4位表示打印机控制方式：0-旧打印方式  1-T3打印方式
+ */
 u8 pt_get_exist(void)
 {
     return g_prt_existflg;
 }
-//**********************************************************************************************************
-//** 函数名称 ：void pt_gpio_init(void)
-//** 函数功能 ：
-//** 入口参数 ：
-//** 出口参数 ：无
-//** 返    回 : 无
-//** 备    注 :   
-//**********************************************************************************************************
+
+/**
+ * @brief  打印机管脚初始化
+ */
 void pt_gpio_init(void)
-{
-    s32 ret;
-    u8 machineid;
+{   
+    g_prt_mot_pwr_pin = GPIO_PRT_MOT_PWR; 
+    g_prt_mot_phase2B_pin = GPIO_PRT_MOT_PHASE_2B;     
+    g_prt_power_pin = GPIO_PRT_POWER; 
+    g_prt_slp_pin = GPIO_PRT_SLP;  
+    g_prt_existflg = 1;  
     
-  #if 0
-    machineid = dev_misc_getmachinetypeid();
-    if(machineid == MACHINE_TYPE_ID_T1)
-  #endif
-    {
-        g_prt_mot_pwr_pin = GPIO_PRT_MOT_PWR; 
-        g_prt_mot_phase2B_pin = GPIO_PRT_MOT_PHASE_2B;         //MOTB#
-        g_prt_power_pin = GPIO_PRT_POWER;               //打印逻辑电源控制
-        g_prt_slp_pin = GPIO_PRT_SLP;  
-        g_prt_existflg = 1;
-
-#ifdef TEST_GPIO
-        g_prt_loop_test_pin =  GPIO_PIN_PTH0; 
-        g_prt_line_test_pin =  GPIO_PIN_PTH1;
-        g_prt_hdl_test_pin  =  GPIO_PIN_PTH2 ; 
-        g_prt_while_test_pin = GPIO_PIN_PTH3;
-#endif
-    }
-  #if 0  
-    else 
-    if((machineid == MACHINE_TYPE_ID_T3)||(machineid == MACHINE_TYPE_ID_T1))
-    {
-        g_prt_mot_pwr_pin = GPIO_PRT_MOT_PWR_T3; 
-        g_prt_mot_phase2B_pin = GPIO_PRT_MOT_PHASE_2B_T3;         //MOTB#
-        g_prt_power_pin = GPIO_PRT_POWER_T3;               //打印逻辑电源控制
-        g_prt_slp_pin = GPIO_PRT_SLP_T3;  
-        g_prt_existflg = 0x11;
-    }
-    else
-    {
-        //其它机型不支持打印
-        g_prt_mot_pwr_pin = GPIO_PIN_NONE; 
-        g_prt_mot_phase2B_pin = GPIO_PIN_NONE;         //MOTB#
-        g_prt_power_pin = GPIO_PIN_NONE;               //打印逻辑电源控制
-        g_prt_slp_pin = GPIO_PIN_NONE;  
-        g_prt_existflg = 0;
-        return;
-    }   
-  #endif
-#ifdef TEST_GPIO
-
-    dev_gpio_config_mux(g_prt_loop_test_pin, MUX_CONFIG_GPIO);   
-    dev_gpio_set_pad(g_prt_loop_test_pin, PAD_CTL_PULL_UP);
-    dev_gpio_direction_output(g_prt_loop_test_pin, 0);
-
-    dev_gpio_config_mux(g_prt_line_test_pin, MUX_CONFIG_GPIO);   
-    dev_gpio_set_pad(g_prt_line_test_pin, PAD_CTL_PULL_UP);
-    dev_gpio_direction_output(g_prt_line_test_pin, 0);
-
-    dev_gpio_config_mux(g_prt_hdl_test_pin, MUX_CONFIG_GPIO);   
-    dev_gpio_set_pad(g_prt_hdl_test_pin, PAD_CTL_PULL_UP);
-    dev_gpio_direction_output(g_prt_hdl_test_pin, 0);
-
-    dev_gpio_config_mux(g_prt_while_test_pin, MUX_CONFIG_GPIO);   
-    dev_gpio_set_pad(g_prt_while_test_pin, PAD_CTL_PULL_UP);
-    dev_gpio_direction_output(g_prt_while_test_pin, 0);
-#endif
-    
-  
-    //配置为GPIO口输出0
     dev_gpio_config_mux(g_prt_mot_pwr_pin, MUX_CONFIG_GPIO);   
     dev_gpio_set_pad(g_prt_mot_pwr_pin, PAD_CTL_PULL_UP);
     dev_gpio_direction_output(g_prt_mot_pwr_pin, 0);
@@ -223,125 +102,127 @@ void pt_gpio_init(void)
     dev_gpio_config_mux(GPIO_PRT_STB1, MUX_CONFIG_GPIO);   
     dev_gpio_set_pad(GPIO_PRT_STB1, PAD_CTL_PULL_UP);
     dev_gpio_direction_output(GPIO_PRT_STB1, 0);      
-
-  #if 1
+ 
     dev_gpio_config_mux(g_prt_power_pin, MUX_CONFIG_GPIO);   
     dev_gpio_set_pad(g_prt_power_pin, PAD_CTL_PULL_UP);
     dev_gpio_direction_output(g_prt_power_pin, 1);
-    g_printf_prn_power_flg = 0;
-  #endif  
+    g_printf_prn_power_flg = 0;   
 
     dev_gpio_config_mux(g_prt_slp_pin, MUX_CONFIG_GPIO);   
     dev_gpio_set_pad(g_prt_slp_pin, PAD_CTL_PULL_UP);
+
+    //唤醒打印机
     if((pt_get_exist()&0xF0)==0x10)
     {
-        dev_gpio_direction_output(g_prt_slp_pin, 0);    //打开3V
+        dev_gpio_direction_output(g_prt_slp_pin, 0);   
         g_prt_slp_flg = 0;
     }
     else
     {
         dev_gpio_direction_output(g_prt_slp_pin, 1);
     }
-    g_printf_moto_flg = 0;    
-  
-    //输入
+    
+    g_printf_moto_flg = 0;     
+    
     dev_gpio_config_mux(GPIO_PRT_PAPER_DET, MUX_CONFIG_GPIO);   
     dev_gpio_set_pad(GPIO_PRT_PAPER_DET, PAD_CTL_PULL_NONE);
-    dev_gpio_direction_input(GPIO_PRT_PAPER_DET);     
-
-    //dev_gpio_config_mux(GPIO_PRT_TM_DET, MUX_CONFIG_GPIO);   
-    //dev_gpio_set_pad(GPIO_PRT_TM_DET, PAD_CTL_PULL_NONE);
-    //dev_gpio_direction_input(GPIO_PRT_TM_DET);
-    
+    dev_gpio_direction_input(GPIO_PRT_PAPER_DET);      
 }
-#define PRT_SPI_MOSI    GPIO_PIN_PTA8
+
+/**
+ * @brief  打印机休眠控制
+ * @param [in]  flg:1-进入休眠  0-退出休眠
+ */
 void pt_ctl_slp(u8 type, u8 flg)
 {
 	dev_gpio_set_value(g_prt_slp_pin, flg);
-	return;
-
-/*
-    if((pt_get_exist()&0xF0)==0x10)
-    {
-#if 1
-        if(flg == 0)
-        {
-            g_prt_slp_flg &= ~(1<<type);
-            if(g_prt_slp_flg == 0)
-            {
-                dev_gpio_set_value(g_prt_slp_pin, 1);
-            }
-        }
-        else
-        {
-            if(g_prt_slp_flg == 0)
-            {
-                dev_gpio_set_value(g_prt_slp_pin, 0);
-            }
-            g_prt_slp_flg |= (1<<type);
-        }
-#endif
-    }
-		*/
 }
+
+/**
+ * @brief  打印机休眠控制
+ * @note  T3打印方式
+ * @param [in]  flg:1-进入休眠  0-退出休眠
+ */
 void pt_ctl_slp_sleep(u8 flg)
 {
+    //T3打印方式
     if((pt_get_exist()&0xF0)==0x10)
     {
-        if(flg == 1)
-        {   //进入SLEEP
+        if(flg == 1)   //进入休眠
+        {          
             dev_gpio_set_value(g_prt_slp_pin, 1);
+
+            //PRT_SPI_MOSI设置为GPIO 
             dev_gpio_config_mux(PRT_SPI_MOSI, MUX_CONFIG_GPIO);
             dev_gpio_set_pad(PRT_SPI_MOSI, PAD_CTL_PULL_NONE);
             dev_gpio_direction_output(PRT_SPI_MOSI, 0);
         }
-        else
-        {
-            //进入SLEEP
+        else  //退出休眠
+        {  
+            //配置回PRT_SPI_MOSI模式
             dev_gpio_config_mux(PRT_SPI_MOSI, MUX_CONFIG_ALT0);
             dev_gpio_set_pad(PRT_SPI_MOSI, PAD_CTL_PULL_UP);
+            
             dev_gpio_set_value(g_prt_slp_pin, 0);
         }
     }
 }
 
-static u32 g_pt_line = 0;
+/**
+ * @brief  单点计数
+ */
 void pt_printline_count(void)
 {
     g_pt_line++;
 }
 
+/**
+ * @brief  点数清除
+ */
 void pt_printline_clear(void)
 {
     g_pt_line = 0;
 }
 
-//返回打印长度，单位：mm
+/**
+ * @brief  获取打印长度
+ * @note  单位：mm
+ * @retval 打印长度
+ */
 u32 pt_get_printline_len(void)
 {
     u32 len;
 
-    len =g_pt_line * 125 / 2000;    //全步，每两点走一步，每步0.125mm
+    len =g_pt_line * 125 / 2000;  //全步，每两点走一步，每步0.125mm
     return len;
 }
 
+/**
+ * @brief  打开IC卡电源 
+ * @note  应该默认是高电平
+ */
 void icc_open_power()
 {
-    //暂不做IC卡兼容
-    SYSCTRL->PHER_CTRL &= (~BIT(20));
-}
-void icc_close_power()
-{
-    //暂不做IC卡兼容
-    SYSCTRL->PHER_CTRL |= BIT(20);
+    SYSCTRL->PHER_CTRL &= (~BIT(20));  //SCI0 VCCEN信号有效电平选择,高电平有效
 }
 
+/**
+ * @brief  关闭IC卡电源
+ */
+void icc_close_power()
+{
+    SYSCTRL->PHER_CTRL |= BIT(20);  //SCI0 VCCEN信号有效电平选择,低电平有效
+}
+
+/**
+ * @brief  打印机休眠
+ */
 void pt_sleep(void)
 {
     if(pt_get_exist())
     {
         dev_debug_printf("---- %s ---- %d -------\r\n",__func__, __LINE__);
-//        LATCH_HIGH();
+        
         STROBE_0_OFF();
         STROBE_1_OFF();
 
@@ -356,10 +237,7 @@ void pt_sleep(void)
         pt_ctl_slp(0, 1);
         dev_spi_close(SPI_DEV_PRINT);
         dev_adc_close(DEV_ADC_PTR_TM);
-        dev_debug_printf("print line: %d  \r\n",pt_get_printline_len());
-        #ifdef MACHINE_P7
-            //icc_close_power();
-        #endif
+        dev_debug_printf("print line: %d  \r\n",pt_get_printline_len());       
     }
 }
 
@@ -388,9 +266,9 @@ void pt_resume(void)
         TPPaperSNSDetect(0);
         pt_printline_clear();
 
-#ifndef TRENDIT_BOOT
+    #ifndef TRENDIT_BOOT
         Queueinit();    //Add by caishaojiang, 解决报缺纸后，下一单打印之前一单的后部分内容
-#endif
+    #endif
 
     #ifdef MACHINE_P7
         //icc_open_power();
@@ -463,17 +341,7 @@ uint8_t pt_get_paper_status(void)
     {
         if(g_printf_moto_flg)
         {
-          #if 0
-            if(dev_user_querrytimer(g_print_moto_timerid, 2))
-            {
-                return pt_check_paper();
-            }
-            else
-            {   //在2ms范围内,强制认为有纸
-                return 0;//
-            }
-          #endif
-//          pt_check_paper();
+            // pt_check_paper();
         }
         else
         {
@@ -638,14 +506,11 @@ void MOTOR_PHASE_2B_LOW(void)
 
 void PRN_POWER_CHARGE(void) 
 {
-  #if 1 
     if(g_printf_prn_power_flg == 0)
     {
-   //     dev_gpio_set_value(g_prt_power_pin,0);
-   	dev_gpio_set_value(g_prt_power_pin,1);
+   	    dev_gpio_set_value(g_prt_power_pin,1);
         g_printf_prn_power_flg = 1;
     }
-  #endif  
 }
 
 void PRN_POWER_DISCHARGE(void) 
@@ -831,36 +696,21 @@ void pt_DET_IRQHandler(void *data)
 //dev_debug_printf("4");
 }
 
-//**********************************************************************************************************
-//** 函数名称 ：void pt_timer_init(void)
-//** 函数功能 ：
-//** 入口参数 ：
-//** 出口参数 ：无
-//** 返    回 : 无
-//** 备    注 :   
-//**********************************************************************************************************
+/**
+ * @brief  马达定时器初始化
+ */
 void pt_timer_init(void)
 {
     str_timer_cfg_t t_cfg;
 
-    t_cfg.m_reload = FALSE;//TRUE;//
-    
+    t_cfg.m_reload = FALSE;    
     t_cfg.m_tus = 800;
 
-    pt_timer_stop();
-    
     //马达定时器
+    pt_timer_stop();     
     dev_timer_request(TIMER_TP,t_cfg,PRT_TP_IRQHandler,NULL);
     
-    dev_timer_int_enable(TIMER_TP);
-    
-       //定时检测纸
-    //dev_timer_request(TIMER_TP_DET,t_cfg,pt_DET_IRQHandler,NULL);
-    
-    //pt_detect_timer_set_period(1000);        // 1s
-    
-    //pt_detect_timer_start();
-        
+    dev_timer_int_enable(TIMER_TP);        
 }
 
 uint32_t TPHTemperatureADTest(void)
