@@ -1,3 +1,7 @@
+/**
+ * @file dev_pt48d_detect.h
+ * @since 2021.3.20  ºúÊ¥ÕûÀí´úÂë
+ */
 
 #ifndef     _ON_PT48D_DETECT_H_
 #define     _ON_PT48D_DETECT_H_
@@ -7,11 +11,6 @@
 #define PAPER_SNS          (1ul<<0)
 #define PAPER_READY        (1ul<<1)
 #define BLACKMARKR_FLAG    (1ul<<3)
-/*
-#define AD_BLACKMARK_HIGH  (0X0300UL)
-#define AD_BLACKMARK_LOW   (0X0050UL)
-#define PAPER_AD_LTHRESHOLD  (AD_BLACKMARK_HIGH)
-*/
 
 #if defined(PT723)
 #define AD_BLACKMARK_HIGH  (0X0200UL)
@@ -36,28 +35,16 @@
 
 #define PAPER_SNSDETECT_MAX 80
 
-
-
-
-/////==========================================================
-
-extern volatile uint16_t Power_AD;
 #if defined(NEW_HEAT_TIME)
     extern uint8_t PrintOn_Flag;
 #endif
 
-
-
-////=======================================================
-extern uint8_t TPPrinterReady(void);
 extern int16_t TPHTemperature(void);
 extern uint8_t TPPrinterMark(void);
-
 extern uint8_t TPGetPaperDetect(void);
 extern void TPPaperSNSDetect(uint8_t c);
-
-
 void  adc_test(void);
+
 #endif
 
 

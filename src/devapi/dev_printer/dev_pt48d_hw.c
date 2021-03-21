@@ -1,3 +1,8 @@
+/**
+ * @file dev_pt48d_hw.c
+ * @brief ¥Ú”°ª˙”≤º˛≥ı ºªØ¥˙¬Î
+ * @since 2021.3.20  ∫˙ •’˚¿Ì¥˙¬Î
+ */
 
 #include "devglobal.h"
 #include "sdk/mhscpu_sdk.h"
@@ -16,13 +21,12 @@ static u8 g_prt_slp_flg;            //bit0±Ì æ¥Ú”°ª˙£¨bit1±Ì æ∑«Ω”£¨∂‘”¶Œ™1±Ì æ¥
 static u8 g_prt_existflg=0;         //º«¬º «∑Ò”–¥Ú”°ª˙±Í÷æ£∫0£∫√ª”–¥Ú”°ª˙ 1:”–¥Ú”°ª˙
                                     //∏ﬂ4ŒªŒ™¥Ú”°ª˙øÿ÷∆∑Ω Ω,0£∫æ…¥Ú”°∑Ω Ω,1:T3¥Ú”°∑Ω Ω
 
-static iomux_pin_name_t  g_prt_mot_pwr_pin; 
-static iomux_pin_name_t  g_prt_mot_phase2B_pin;   //MOTB#
-static iomux_pin_name_t  g_prt_power_pin;         //¥Ú”°¬ﬂº≠µÁ‘¥øÿ÷∆
+static iomux_pin_name_t  g_prt_mot_pwr_pin;  //ø’ 
+static iomux_pin_name_t  g_prt_mot_phase2B_pin;   
+static iomux_pin_name_t  g_prt_power_pin;  //¥Ú”°¬ﬂº≠µÁ‘¥øÿ÷∆
 static iomux_pin_name_t  g_prt_slp_pin; 
 
 int print_nopaper_count = 0;  
-
 
 #ifdef PT48D_DEV_DEBUG_
 void DBG_DAT(u8 *data,u16 len)
@@ -140,6 +144,7 @@ void pt_ctl_slp(u8 type, u8 flg)
 
 /**
  * @brief  ¥Ú”°ª˙–›√ﬂøÿ÷∆
+ * @note  ≤ª≥£”√
  * @note  T3¥Ú”°∑Ω Ω
  * @param [in]  flg:1-Ω¯»Î–›√ﬂ  0-ÕÀ≥ˆ–›√ﬂ
  */
@@ -221,60 +226,57 @@ void pt_sleep(void)
 {
     if(pt_get_exist())
     {
-        dev_debug_printf("---- %s ---- %d -------\r\n",__func__, __LINE__);
-        
+        //≤ªº”»»
         STROBE_0_OFF();
         STROBE_1_OFF();
 
+        //¬Ì¥Ô«˝∂Øøÿ÷∆£¨≤ª◊™
         MOTOR_PHASE_1A_LOW();
         MOTOR_PHASE_1B_LOW();
         MOTOR_PHASE_2A_LOW();
         MOTOR_PHASE_2B_LOW();
-        
+
+        //¥Ú”°ª˙œ¬µÁ
         MOTOR_PWR_OFF();
         LATCH_LOW();
         PRN_POWER_DISCHARGE();
-        pt_ctl_slp(0, 1);
+
+        //Ω¯»Î–›√ﬂ
+        pt_ctl_slp(0, 1);          
         dev_spi_close(SPI_DEV_PRINT);
-        dev_adc_close(DEV_ADC_PTR_TM);
-        dev_debug_printf("print line: %d  \r\n",pt_get_printline_len());       
+        dev_adc_close(DEV_ADC_PTR_TM);        
     }
 }
 
+/**
+ * @brief  –›√ﬂªΩ–—
+ */
 void pt_resume(void)
 {
-    uint32_t i;
-
     if(pt_get_exist())
     {
-        dev_debug_printf("---- %s ---- %d -------\r\n",__func__, __LINE__);
-        pt48d_dev_init();
-        
+        //–›√ﬂªΩ–—
+        pt48d_dev_init();        
         pt_ctl_slp(0, 0);
         dev_spi_open(SPI_DEV_PRINT);
         dev_adc_open(DEV_ADC_PTR_TM);
 
+        //…œµÁ
         PRN_POWER_CHARGE();
         LATCH_HIGH();
-        SetDesity();
-
-        //for(i=0;i<50000;i++);
-        //dev_user_delay_ms(20);
+        
+        SetDesity();       
         print_nopaper_count = 0;
         dev_printer_setpaper_state(PT_STATUS_IDLE);
-
         TPPaperSNSDetect(0);
         pt_printline_clear();
 
-    #ifndef TRENDIT_BOOT
-        Queueinit();    //Add by caishaojiang, Ω‚æˆ±®»±÷Ω∫Û£¨œ¬“ªµ•¥Ú”°÷Æ«∞“ªµ•µƒ∫Û≤ø∑÷ƒ⁄»›
-    #endif
-
-    #ifdef MACHINE_P7
-        //icc_open_power();
-    #endif
+      #ifndef TRENDIT_BOOT
+        Queueinit();  //≥ı ºªØ∂”¡–
+      #endif
     }
 }
+
 
 void CHECKPAPER_LED_ON(void)
 {
@@ -282,7 +284,6 @@ void CHECKPAPER_LED_ON(void)
     {
         dev_gpio_set_value(g_prt_mot_pwr_pin,1);
         dev_user_delay_us(1000);
-//dev_debug_printf("LED ON\r\n");
     }
 }
 
@@ -291,33 +292,37 @@ void CHECKPAPER_LED_OFF(void)
     if((pt_get_exist()&0xf0) == 0x10)
     {
         dev_gpio_set_value(g_prt_mot_pwr_pin,0);
-//dev_debug_printf("LED OFF\r\n");
     }
 }
 
+/**
+ * @brief  ºÏ≤‚ «∑Ò”–÷Ω
+ * @retval 0:”–÷Ω  1:√ª÷Ω
+ */
 u8 pt_check_paper(void)
 {
     s32 i;
     s32 ret = 0;
 
+    //ºÏ≤‚ «∑Ò”–÷Ω
     for(i=0; i<3; i++)
     {
-        //if(1 == dev_gpio_get_value(GPIO_PRT_PAPER_DET))
         if(0 == dev_gpio_get_value(GPIO_PRT_PAPER_DET))
-        {
-            //”–÷Ω,
+        {            
             break;
         }
         dev_user_delay_us(5);
     }
+
+    //Œﬁ÷Ω
     if(i>=3)
     {
         //Œﬁ÷Ω
- //       dev_debug_printf("no paper \r\n");
+        //dev_debug_printf("no paper \r\n");
         print_nopaper_count ++;
         if(print_nopaper_count>=PAPER_SNSDETECT_MAX)
         {
-//            dev_debug_printf("--------------------------------------------no paper \r\n");
+            //dev_debug_printf("--------------------------------------------no paper \r\n");
             return 1;
         }
         else
@@ -325,45 +330,43 @@ u8 pt_check_paper(void)
             return 0;
         }
     }
-    else
-    {
-        //”–÷Ω
- //       dev_debug_printf("has paper \r\n");
+    else  //”–÷Ω
+    {        
         print_nopaper_count = 0;
         return 0;
     }
 }
+
+
+/**
+ * @brief  ºÏ≤‚ «∑Ò”–÷Ω
+ * @retval 0:”–÷Ω  1:√ª÷Ω
+ */
 uint8_t pt_get_paper_status(void)
 {
     s32 ret;
     s32 i;
+    
     if(pt_get_exist())
     {
         if(g_printf_moto_flg)
         {
-            // pt_check_paper();
+            //pt_check_paper();
         }
         else
         {
             CHECKPAPER_LED_ON();
-          #if 0
-            ret = pt_check_paper();
-            if(!g_printf_moto_flg)
-            {
-                CHECKPAPER_LED_OFF();
-            }
-            return ret;
-          #else
+         
             for(i=0; i<PAPER_SNSDETECT_MAX+2; i++)
             {
                 pt_check_paper();
                 dev_user_delay_us(500);
             }
+            
             if(!g_printf_moto_flg)
             {
                 CHECKPAPER_LED_OFF();
-            }
-          #endif
+            }         
         }
         
         if(print_nopaper_count>=PAPER_SNSDETECT_MAX)
@@ -372,7 +375,7 @@ uint8_t pt_get_paper_status(void)
         }
         else
         {
-            return 0;       //”–÷Ω
+            return 0;  
         }
     }
     else
@@ -382,6 +385,9 @@ uint8_t pt_get_paper_status(void)
     
 }
 
+/**
+ * @brief  ¥Ú”°ª˙µÁ‘¥À¯¥Ê¿≠∏ﬂ
+ */
 void LATCH_HIGH(void) 
 {
     if(pt_get_exist())
@@ -390,15 +396,20 @@ void LATCH_HIGH(void)
     }
 }
 
+/**
+ * @brief  ¥Ú”°ª˙µÁ‘¥À¯¥Ê¿≠µÕ
+ */
 void LATCH_LOW(void)                     
 {    
     if(pt_get_exist())
     {
         dev_gpio_set_value(GPIO_PRT_LAT,0);
-    }
-    
+    }    
 }
 
+/**
+ * @brief  ¥Ú”°ª˙…œµÁ
+ */
 void MOTOR_PWR_ON(void)          
 {   
     if(pt_get_exist())
@@ -408,6 +419,7 @@ void MOTOR_PWR_ON(void)
             g_printf_moto_flg = 1;
             g_print_moto_timerid = dev_user_gettimeID();
             dev_gpio_set_value(g_prt_mot_pwr_pin,1);
+            
             if((pt_get_exist()&0xF0)==0x10)
             {
 //                dev_gpio_set_value(g_prt_slp_pin,0);
@@ -420,24 +432,21 @@ void MOTOR_PWR_ON(void)
     }
 }
 
+/**
+ * @brief  ¥Ú”°ª˙œ¬µÁ
+ */
 void MOTOR_PWR_OFF(void)         
 {
     if(pt_get_exist())
     {
         g_printf_moto_flg = 0;
-        if((pt_get_exist()&0xF0)==0x10)
-        {
-//            dev_gpio_set_value(g_prt_slp_pin,1);
-        }
-        else
-        {
- //           dev_gpio_set_value(g_prt_slp_pin,1);
-        }
         dev_gpio_set_value(g_prt_mot_pwr_pin,1);
-    }
-    
+    }    
 }
 
+/**
+ * @brief  1Aøÿ÷∆π‹Ω≈¿≠∏ﬂ
+ */
 void MOTOR_PHASE_1A_HIGH(void)  
 {
     if(pt_get_exist())
@@ -446,6 +455,9 @@ void MOTOR_PHASE_1A_HIGH(void)
     }
 }
 
+/**
+ * @brief  1Aøÿ÷∆π‹Ω≈¿≠µÕ
+ */
 void MOTOR_PHASE_1A_LOW(void)   
 {
     if(pt_get_exist())
@@ -454,6 +466,9 @@ void MOTOR_PHASE_1A_LOW(void)
     }
 }
 
+/**
+ * @brief  1Bøÿ÷∆π‹Ω≈¿≠∏ﬂ
+ */
 void MOTOR_PHASE_1B_HIGH(void)  
 {
     if(pt_get_exist())
@@ -462,6 +477,9 @@ void MOTOR_PHASE_1B_HIGH(void)
     }
 }
 
+/**
+ * @brief  1Bøÿ÷∆π‹Ω≈¿≠µÕ
+ */
 void MOTOR_PHASE_1B_LOW(void)   
 {
     if(pt_get_exist())
@@ -470,24 +488,31 @@ void MOTOR_PHASE_1B_LOW(void)
     }
 }
 
+/**
+ * @brief  2Aøÿ÷∆π‹Ω≈¿≠∏ﬂ
+ */
 void MOTOR_PHASE_2A_HIGH(void)  
 {
     if(pt_get_exist())
     {
         dev_gpio_set_value(GPIO_PRT_MOT_PHASE_2A,1);
-    }
-    
+    }    
 }
 
+/**
+ * @brief  2Aøÿ÷∆π‹Ω≈¿≠µÕ
+ */
 void MOTOR_PHASE_2A_LOW(void)   
 {
     if(pt_get_exist())
     {
         dev_gpio_set_value(GPIO_PRT_MOT_PHASE_2A,0);
-    }
-    
+    }    
 }
 
+/**
+ * @brief  2Bøÿ÷∆π‹Ω≈¿≠∏ﬂ
+ */
 void MOTOR_PHASE_2B_HIGH(void)  
 {
     if(pt_get_exist())
@@ -496,6 +521,9 @@ void MOTOR_PHASE_2B_HIGH(void)
     }
 }
 
+/**
+ * @brief  2Bøÿ÷∆π‹Ω≈¿≠µÕ
+ */
 void MOTOR_PHASE_2B_LOW(void)   
 {
     if(pt_get_exist())
@@ -504,6 +532,9 @@ void MOTOR_PHASE_2B_LOW(void)
     }
 }
 
+/**
+ * @brief  ¥Ú”°ª˙…œµÁ
+ */
 void PRN_POWER_CHARGE(void) 
 {
     if(g_printf_prn_power_flg == 0)
@@ -513,13 +544,13 @@ void PRN_POWER_CHARGE(void)
     }
 }
 
+/**
+ * @brief  ¥Ú”°ª˙œ¬µÁ
+ */
 void PRN_POWER_DISCHARGE(void) 
-{
-  #if 1
-    //dev_gpio_set_value(g_prt_power_pin,1);
+{  
     dev_gpio_set_value(g_prt_power_pin,0);
-    g_printf_prn_power_flg = 0;
-  #endif  
+    g_printf_prn_power_flg = 0;   
 }
 
 void STROBE_0_ON(void)     
@@ -531,6 +562,10 @@ void STROBE_0_OFF(void)
 {
     
 }
+
+/**
+ * @brief  º”»»øÿ÷∆
+ */
 
 void STROBE_1_ON(void) 
 {
@@ -545,10 +580,12 @@ void STROBE_1_OFF(void)
     if(pt_get_exist())
     {
         dev_gpio_set_value(GPIO_PRT_STB1,0);
-    }
-    
+    }    
 }
 
+/**
+ * @brief  ¥Ú”°ª˙SPIΩ”ø⁄≥ı ºªØ
+ */
 void pt_spi_init(void)
 {
     if(pt_get_exist())
@@ -557,147 +594,96 @@ void pt_spi_init(void)
     }
 }
 
-
- void TPDataShiftOut(uint8_t *p, uint16_t len)
-{       
-    #if 0
-    s32 i = 0;
-
-    for(i = 0; i < len; i++)
-    {
-        dev_debug_printf("%x ",p[i]);
-    }
-    #endif
+/**
+ * @brief  ¥Ú”°ª˙¥´ ‰ ˝æ›
+ */
+void TPDataShiftOut(uint8_t *p, uint16_t len)
+{   
     dev_spi_master_transceive_polling(SPI_DEV_PRINT,p,NULL,len);
 }
 
-//**********************************************************************************************************
-//** ∫Ø ˝√˚≥∆ £∫void pt_timer_start(void)
-//** ∫Ø ˝π¶ƒ‹ £∫¬Ì¥Ô≤ΩΩ¯ ±÷”
-//** »Îø⁄≤Œ ˝ £∫
-//** ≥ˆø⁄≤Œ ˝ £∫Œﬁ
-//** ∑µ    ªÿ : Œﬁ
-//** ±∏    ◊¢ :   
-//**********************************************************************************************************
+/**
+ * @brief  ∆Ù∂Ø∂® ±∆˜
+ * @note  ¥Ú”°ª˙ π”√
+ */
 void pt_timer_start(void)
-{
-        //DBG_STR("####  pt_timer_start()\r\n");
-        
-        dev_timer_run(TIMER_TP);
-}
-
-
-//**********************************************************************************************************
-//** ∫Ø ˝√˚≥∆ £∫void pt_timer_stop(void)
-//** ∫Ø ˝π¶ƒ‹ £∫¬Ì¥Ô≤ΩΩ¯ ±÷”
-//** »Îø⁄≤Œ ˝ £∫
-//** ≥ˆø⁄≤Œ ˝ £∫Œﬁ
-//** ∑µ    ªÿ : Œﬁ
-//** ±∏    ◊¢ :   
-//**********************************************************************************************************
-void pt_timer_stop(void)
-{
-        //DBG_STR("####  pt_timer_stop()\r\n");
-        
-        dev_timer_stop(TIMER_TP);
-}
-
-//**********************************************************************************************************
-//** ∫Ø ˝√˚≥∆ £∫void pt_timer_set_periodUs(uint32_ t uiPeriodUs)
-//** ∫Ø ˝π¶ƒ‹ £∫¬Ì¥Ô≤ΩΩ¯ ±÷”
-//** »Îø⁄≤Œ ˝ £∫
-//** ≥ˆø⁄≤Œ ˝ £∫Œﬁ
-//** ∑µ    ªÿ : Œﬁ
-//** ±∏    ◊¢ :   
-//**********************************************************************************************************
-void pt_timer_set_periodUs(uint32_t uiPeriodUs)
-{
-        dev_timer_setvalue(TIMER_TP,uiPeriodUs);
-//dev_debug_printf("t=%d\r\n", uiPeriodUs);       
-        
-    //    char test_buf[32] = {0};
-    //        sprintf(test_buf,"tm = %d\r\n",uiPeriodUs);
-    //     uart_send_str(test_buf);
-
-    //DBG_STR("######             ### pt_timer_set_periodUs:%ld \r\n",uiPeriodUs);
-}
-
-//**********************************************************************************************************
-//** ∫Ø ˝√˚≥∆ £∫void pt_timer_start(void)
-//** ∫Ø ˝π¶ƒ‹ £∫∂® ±ºÏ≤‚ ±÷”
-//** »Îø⁄≤Œ ˝ £∫
-//** ≥ˆø⁄≤Œ ˝ £∫Œﬁ
-//** ∑µ    ªÿ : Œﬁ
-//** ±∏    ◊¢ :   
-//**********************************************************************************************************
-void pt_detect_timer_start(void)
-{
-        dev_timer_run(TIMER_TP_DET);
-}
-//**********************************************************************************************************
-//** ∫Ø ˝√˚≥∆ £∫void pt_detect_timer_stop(void)
-//** ∫Ø ˝π¶ƒ‹ £∫∂® ±ºÏ≤‚ ±÷”
-//** »Îø⁄≤Œ ˝ £∫
-//** ≥ˆø⁄≤Œ ˝ £∫Œﬁ
-//** ∑µ    ªÿ : Œﬁ
-//** ±∏    ◊¢ :   
-//**********************************************************************************************************
-void pt_detect_timer_stop(void)
-{
-        dev_timer_stop(TIMER_TP_DET);
-}
-
-//**********************************************************************************************************
-//** ∫Ø ˝√˚≥∆ £∫void pt_detect_timer_set_period(uint32_ t uiPeriodMs)
-//** ∫Ø ˝π¶ƒ‹ £∫∂® ±ºÏ≤‚ ±÷” ms
-//** »Îø⁄≤Œ ˝ £∫
-//** ≥ˆø⁄≤Œ ˝ £∫Œﬁ
-//** ∑µ    ªÿ : Œﬁ
-//** ±∏    ◊¢ :   
-//**********************************************************************************************************
-void pt_detect_timer_set_period(uint32_t uiPeriodMs)
-{
-        uint32_t uiPeriodUs ;
-
-        uiPeriodUs = uiPeriodMs * 1000;
-        
-        dev_timer_setvalue(TIMER_TP_DET,uiPeriodUs);
-}
-
-void PRT_TP_IRQHandler(void *data)
-{      
-#ifdef TEST_GPIO
-    dev_gpio_direction_output(g_prt_hdl_test_pin, 1);
-#endif
-    pt_timer_stop();
-    
-//    PRN_POWER_DISCHARGE();
-        
-//    PRN_POWER_CHARGE();
-        
-    TPPaperSNSDetect_interrupt(0);
-
-    TPISRProc();     
-
-#ifdef TEST_GPIO
-    dev_gpio_direction_output(g_prt_hdl_test_pin, 0);
-#endif
-//dev_debug_printf("3"); 
-}
-
-void pt_DET_IRQHandler(void *data)
-{
-        unsigned char ch=0;
-        
-        TPPaperSNSDetect(ch);
-        pt_detect_timer_set_period(1000);
-
-        pt_detect_timer_start();
-//dev_debug_printf("4");
+{        
+    dev_timer_run(TIMER_TP);
 }
 
 /**
- * @brief  ¬Ì¥Ô∂® ±∆˜≥ı ºªØ
+ * @brief  Õ£÷π∂® ±∆˜
+ * @note  ¥Ú”°ª˙ π”√
+ */
+void pt_timer_stop(void)
+{        
+    dev_timer_stop(TIMER_TP);
+}
+
+/**
+ * @brief  …Ë÷√∂® ± ±º‰
+ * @param [in]  pHuiPeriodUsash:∂® ± ±º‰
+ */
+void pt_timer_set_periodUs(uint32_t uiPeriodUs)
+{
+    dev_timer_setvalue(TIMER_TP,uiPeriodUs);
+}
+
+/**
+ * @brief  ∆Ù∂Ø∂® ±∆˜
+ * @note  ¥Ú”°÷Ωº∞Œ¬∂»ºÏ≤‚ π”√
+ */
+void pt_detect_timer_start(void)
+{
+    dev_timer_run(TIMER_TP_DET);
+}
+
+/**
+ * @brief  Õ£÷π∂® ±∆˜
+ * @note  ¥Ú”°÷Ωº∞Œ¬∂»ºÏ≤‚ π”√
+ */
+void pt_detect_timer_stop(void)
+{
+    dev_timer_stop(TIMER_TP_DET);
+}
+
+/**
+ * @brief  …Ë÷√∂® ± ±º‰ 
+ * @note  ¥Ú”°÷Ωº∞Œ¬∂»ºÏ≤‚ ±÷”
+ * @param [in]  pHuiPeriodUsash:∂® ± ±º‰
+ */
+void pt_detect_timer_set_period(uint32_t uiPeriodMs)
+{
+    uint32_t uiPeriodUs;
+
+    uiPeriodUs = uiPeriodMs * 1000;    
+    dev_timer_setvalue(TIMER_TP_DET,uiPeriodUs);
+}
+
+/**
+ * @brief  ¥Ú”°ª˙∂® ±∆˜÷–∂œ
+ */
+void PRT_TP_IRQHandler(void *data)
+{    
+    pt_timer_stop();        
+    TPPaperSNSDetect_interrupt(0);
+    TPISRProc();   
+}
+
+/**
+ * @brief  ¥Ú”°÷Ωº∞Œ¬∂»ºÏ≤‚∂® ±∆˜÷–∂œ
+ */
+void pt_DET_IRQHandler(void *data)
+{
+    unsigned char ch=0;
+    
+    TPPaperSNSDetect(ch);
+    pt_detect_timer_set_period(1000);
+    pt_detect_timer_start();
+}
+
+/**
+ * @brief  ¥Ú”°ª˙∂® ±∆˜≥ı ºªØ
  */
 void pt_timer_init(void)
 {
@@ -705,95 +691,46 @@ void pt_timer_init(void)
 
     t_cfg.m_reload = FALSE;    
     t_cfg.m_tus = 800;
-
-    //¬Ì¥Ô∂® ±∆˜
+   
     pt_timer_stop();     
-    dev_timer_request(TIMER_TP,t_cfg,PRT_TP_IRQHandler,NULL);
-    
+    dev_timer_request(TIMER_TP,t_cfg,PRT_TP_IRQHandler,NULL);    
     dev_timer_int_enable(TIMER_TP);        
 }
 
+/**
+ * @brief  ¥Ú”°ª˙Œ¬∂»ºÏ≤‚
+ * @retval ºÏ≤‚Œ¬∂»
+ */
 uint32_t TPHTemperatureADTest(void)
 {
-    uint8_t i;
     u16 temp;
     u16 adbuf[5];
     uint32_t tResult=0;
-    int16_t cTemperature = 0;
+    int16_t cTemperature = 0;        
 
-#if 1
-{
-        #if 0
-            temp = dev_adc_get_arrage_value(DEV_ADC_PTR_TM, 50);
-        #else
-
-        dev_adc_open(DEV_ADC_PTR_TM);
-
-
-
-        if(dev_adc_get_value(DEV_ADC_PTR_TM, adbuf, 3) < 0)
-        {
-        	dev_adc_close(DEV_ADC_PTR_TM);
-            return DEVSTATUS_ERR_FAIL;
-        }
-
-        
-        dev_adc_close(DEV_ADC_PTR_TM);
-		
-        temp = adbuf[0] + adbuf[1] + adbuf[2];
-
-        temp = temp/3;
-        #endif
-        dev_debug_printf("---- adcaa = %d  ---- \r\n",temp);
-
-        
-        #if 1 
-
-        //tResult = (temp*180)/0xFFF;
-        tResult = (temp*188*2)/0xFFF;
-        dev_debug_printf("---- V = %d  ---- \r\n",tResult);
-
-
-        //tResult = PrinterVolToR(tResult, 180, 300, 0);
-        tResult = PrinterVolToR(tResult, 300, 200, 0);
-        dev_debug_printf("---- R = %d  ---- \r\n",tResult);
-        
-
-        
-        
-        cTemperature = TranRtoDegree(tResult); // 10ŒªADC
-      #endif
-        //cTemperature = 16;
-		dev_debug_printf("ct=%d\r\n", cTemperature);        
-        return cTemperature;
-    }
-
-#else
- /*   for(i=0;i<5;i++)
+    dev_adc_open(DEV_ADC_PTR_TM);
+    if(dev_adc_get_value(DEV_ADC_PTR_TM, adbuf, 3) < 0)
     {
-        ad = (uint32_t)dev_adc_get_value(DEV_ADC_PTR_TM); 
-
-        temp += ad;
-    }
-*/
-    if(dev_adc_get_value(DEV_ADC_PTR_TM, adbuf, 5) < 0)
-    {
+    	dev_adc_close(DEV_ADC_PTR_TM);
         return DEVSTATUS_ERR_FAIL;
-    }
-    temp = adbuf[0] + adbuf[1]+ adbuf[2]+ adbuf[3]+ adbuf[4];
-    
-    tResult = (temp*120)/(5*0xFFF);
-    
-    dev_debug_printf("ad valule:%d \r\n",(temp/5));
-        
-    dev_debug_printf("voltage:%d \r\n",tResult);
+    }    
+    dev_adc_close(DEV_ADC_PTR_TM);
+	
+    temp = adbuf[0] + adbuf[1] + adbuf[2];
+    temp = temp/3;
+  
+    dev_debug_printf("---- adcaa = %d  ---- \r\n",temp);        
 
-    tResult = TranVtoR((temp/5),0x0FFF,300,0);
-
-    dev_debug_printf("resistance:%d \r\n",tResult);
+    tResult = (temp*188*2)/0xFFF;
+    dev_debug_printf("---- V = %d  ---- \r\n",tResult);
     
-    return tResult;
-#endif
+    tResult = PrinterVolToR(tResult, 300, 200, 0);
+    dev_debug_printf("---- R = %d  ---- \r\n",tResult);   
+    
+    cTemperature = TranRtoDegree(tResult); 
+	dev_debug_printf("ct=%d\r\n", cTemperature);  
+    
+    return cTemperature;    
 }
 
 #endif

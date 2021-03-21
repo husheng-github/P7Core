@@ -1,3 +1,9 @@
+/**
+ * @file dev_pt48d_detect.c
+ * @brief 打印机检测代码
+ * @note  检测是否有纸、温度
+ * @since 2021.3.20  胡圣整理代码
+ */
 
 #include "devglobal.h"
 #include "sdk/mhscpu_sdk.h"
@@ -6,16 +12,12 @@
 #include "dev_pt48d_detect.h"
 #include "dev_pt48d_hw.h"
 
-volatile uint16_t Power_AD;
-volatile uint16_t battery_value;
-
-uint8_t printersts,papercnt,platencnt,bm_cnt;
+uint8_t printersts;
 
 #if defined(NEW_HEAT_TIME)
     uint8_t PrintOn_Flag = FALSE;
 #endif
 
-static int g_paper_snsdetect_count = 0;
 extern int print_nopaper_count;
 
 const uint16_t restbl[25] = {8430,6230,4660,3520,2690,2080,
@@ -23,41 +25,37 @@ const uint16_t restbl[25] = {8430,6230,4660,3520,2690,2080,
                          375, 300, 242, 196, 159, 131,
                          108,  89,  74,  62,  52,  44,37};
 
-
+/**
+ * @brief  检测是否有纸
+ */
 void TPPaperSNSDetect(uint8_t c)
 {   
-    if (TPGetPaperDetect() == 0) // 有纸
-    {
-            //DBG_STR("有纸\r\n");
-
-            //dev_led_sta_set(LED_BLUE_NO, 1);
-            
-            if((printersts & PAPER_READY) == 0)
-            {
-                    printersts &= ~PAPER_SNS;
-                    printersts |= PAPER_READY;
-                    //DBG_STR("进纸\r\n");
-            }
+    if (TPGetPaperDetect() == 0)  //有纸
+    {          
+        if((printersts & PAPER_READY) == 0)
+        {
+            printersts &= ~PAPER_SNS;
+            printersts |= PAPER_READY;
+            //DBG_STR("进纸\r\n");
+        }
     }
-    else  // 无纸
-    {
-            //DBG_STR("无纸\r\n");
-            
-            if((printersts & PAPER_READY) == PAPER_READY)
-            {
-                    printersts |= PAPER_SNS;
-                    printersts &= ~PAPER_READY;
-                    //DBG_STR("出纸\r\n");
-            }
+    else  //无纸
+    {       
+        if((printersts & PAPER_READY) == PAPER_READY)
+        {
+            printersts |= PAPER_SNS;
+            printersts &= ~PAPER_READY;
+            //DBG_STR("出纸\r\n");
+        }
     }
-
 }
 
+/**
+ * @brief  判断打印机是否准备好
+ * @return  TRUE:准备好了    FALSE:没有准备好
+ */
 uint8_t TPPrinterReady(void)
 {
-#if  0
-    return TRUE;
-#else
     if(printersts & PAPER_READY)
     {
         return TRUE;
@@ -66,11 +64,9 @@ uint8_t TPPrinterReady(void)
     {
         return FALSE;
     }
-
-#endif
 }
 
-extern uint8_t TPPrinterMark(void)
+uint8_t TPPrinterMark(void)
 {
     if(printersts & BLACKMARKR_FLAG)
     {
@@ -82,32 +78,11 @@ extern uint8_t TPPrinterMark(void)
     }
 }
 
-/*
-函数    把读取到的AD值，根据上拉或下拉电阻计算对应内部的电阻值
-输入    ad:     读取到的ad值,单位:100欧姆
-        uRes:   外部上拉电阻值
-        dRes:   外部下拉电阻值
-*/
-uint32_t TranVtoR(uint32_t ad,uint32_t adMax,uint32_t uRes,uint32_t dRes)
-{
-    if (uRes)
-    {   // 上拉电阻
-            if (ad >= adMax)
-                    return (ad*uRes);
-            else
-                    return ((ad*uRes)/(adMax-ad));
-    }
-    else
-    {   // 下拉电阻
-            if (ad == 0) ad = 1;
-            return ((adMax-ad)*dRes/ad);
-    }
-}
-
-/*
-函数    把热敏机芯的热敏电阻值转换为对应温度
-输入    res     热敏电阻值，单位:100欧姆
-*/                         
+/**
+ * @brief  把热敏机芯的热敏电阻值转换为对应温度
+ * @param [in]  res:热敏电阻值
+ * @retval 转换的温度值
+ */
 int16_t TranRtoDegree(uint32_t res)
 {
     uint16_t i;
@@ -132,18 +107,11 @@ int16_t TranRtoDegree(uint32_t res)
     return (degree);
 }
 
-/*
-****************************************************************************************************
-** 名    称 ：APP_Math_Chr2Hex()
-** 功    能 ：把读取到的AD电压值，根据上拉或下拉电阻计算对应内部的电阻值
-** 入口参数 ：    ad:     读取到的ad电压值,单位:100欧姆
-                        uRes:   外部上拉电阻值
-                        dRes:   外部下拉电阻值
-** 出口参数 ：无
-** 返    回 ：
-** 备    注 :
-****************************************************************************************************
-*/
+/**
+ * @brief  电压值转换为电阻值
+ * @param [in]  cVol:热敏电阻值
+ * @retval 转换的温度值
+ */
 uint32_t PrinterVolToR(uint32_t cVol,uint32_t cRefVol,uint32_t uRes,uint32_t dRes)
 {
     if (uRes)
@@ -158,16 +126,16 @@ uint32_t PrinterVolToR(uint32_t cVol,uint32_t cRefVol,uint32_t uRes,uint32_t dRe
     }
 }
 
-
+/**
+ * @brief  打印机温度检测
+ * @retval 检测温度
+ */
 int16_t TPHTemperature(void)
 {
-    uint8_t i;
     u16 adbuf[3] = {0};
     uint32_t temp = 0;
     uint32_t tResult = 0;
     int16_t cTemperature = 0;
-    char cTemp[64];
-
 
     if(pt_get_exist())
     {
@@ -181,29 +149,12 @@ int16_t TPHTemperature(void)
         dev_adc_close(DEV_ADC_PTR_TM);
 		
         temp = adbuf[0] + adbuf[1] + adbuf[2];
-
-        temp = temp/3;
-        //dev_debug_printf("---- adcaa = %d  ---- \r\n",temp);
-
+        temp = temp/3;       
         
-        #if 1 
-
-        //tResult = (temp*180)/0xFFF;
-        tResult = (temp*188*2)/0xFFF;
-        //dev_debug_printf("---- V = %d  ---- \r\n",tResult);
-
-
-        //tResult = PrinterVolToR(tResult, 180, 300, 0);
+        tResult = (temp*188*2)/0xFFF;      
         tResult = PrinterVolToR(tResult, 300, 200, 0);
-        //dev_debug_printf("---- R = %d  ---- \r\n",tResult);
         
-
-        
-        
-        cTemperature = TranRtoDegree(tResult); // 10位ADC
-      #endif
-        //cTemperature = 16;
-		//dev_debug_printf("ct=%d\r\n", cTemperature);        
+        cTemperature = TranRtoDegree(tResult);           
         return cTemperature;
     }
     else
@@ -213,34 +164,40 @@ int16_t TPHTemperature(void)
     
 }
 
+/**
+ * @brief  检测是否有纸
+ * @retval 0:有纸  1:没纸
+ */
 uint8_t TPGetPaperDetect(void)
 {        
-        return pt_get_paper_status();
+    return pt_get_paper_status();
 }
 
-extern void TPPaperSNSDetect_interrupt(uint8_t c)//488?????,486?????
-{
-
-        //DBG_STR("无纸\r\n");
-        if(print_nopaper_count>=PAPER_SNSDETECT_MAX)
+/**
+ * @brief  定时检测是否有纸，设置状态 
+ * @param [in]  c:未使用
+ */
+void TPPaperSNSDetect_interrupt(uint8_t c)
+{ 
+    if(print_nopaper_count >= PAPER_SNSDETECT_MAX)
+    {
+        //一开始认为是没纸，清掉状态
+        if((printersts & PAPER_READY) == PAPER_READY)
         {
-            //一开始认为是没纸，清掉状态
-            if((printersts & PAPER_READY) == PAPER_READY)
-            {
-                printersts |= PAPER_SNS;
-                printersts &= ~PAPER_READY;
-                //DBG_STR("出纸\r\n");
-            }
+            printersts |= PAPER_SNS;
+            printersts &= ~PAPER_READY;
+            //DBG_STR("出纸\r\n");
         }
-        else
+    }
+    else
+    {
+        if((printersts & PAPER_READY) == 0)
         {
-            if((printersts & PAPER_READY) == 0)
-            {
-                printersts &= ~PAPER_SNS;
-                printersts |= PAPER_READY;
-                //DBG_STR("进纸\r\n");
-            }
+            printersts &= ~PAPER_SNS;
+            printersts |= PAPER_READY;
+            //DBG_STR("进纸\r\n");
         }
+    }
 }
 
 #endif

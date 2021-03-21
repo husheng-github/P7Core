@@ -58,8 +58,9 @@ static FIFO Queue;
 FIFO * qQueue = NULL;
 static s32 g_queue_init_flag = 0;
 
-//-------初始化 
-FIFO * Queueinit(void){
+//初始化队列
+FIFO * Queueinit(void)
+{
     if(0 == g_queue_init_flag)
     {
         Queue.queue = (u8 *)k_malloc(MAX);
@@ -84,9 +85,6 @@ FIFO * Queueinit(void){
     {
         qQueue = NULL;
     }
-    
-//    qQueue = (FIFO *)malloc(sizeof(FIFO)) ;
-    //memset(qQueue , 0x00 , sizeof(FIFO)) ;
     
     return qQueue ;
 }

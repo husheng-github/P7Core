@@ -396,8 +396,8 @@ extern void PrtSetHeatDot(uint8_t val)
 }
 
 /**
- * @brief  设置打印机速度
- * @param [in]  speed:速度区间
+ * @brief  设置加热时间
+ * @param [in]  speed:选择区间
  */
 void TPSetSpeed(uint8_t speed)
 {
@@ -421,6 +421,7 @@ void TPSetSpeed(uint8_t speed)
     if (speed < ARRAY_SIZE(TPHeatTbl))
     {
         tp.heat_setting = TPHeatTbl[speed];
+        
       #if defined(NEW_HEAT_TIME)
         tp.heat_adj = tp.heat_setting;
       #endif
@@ -436,15 +437,19 @@ void SetDesity(void)
 /**
  * @brief  打印机设备初始化
  */
-extern void printer_init(void)
+void printer_init(void)
 {
     pt48d_dev_init();
-    PRN_POWER_CHARGE();
-    
-    MOTOR_PWR_OFF();
+
+    //上电
+    PRN_POWER_CHARGE();      
+    MOTOR_PWR_OFF();  //空实现
+
+    //不加热
     STROBE_0_OFF();
     STROBE_1_OFF();
 
+    //马达驱动控制，不转
     MOTOR_PHASE_1A_LOW();
     MOTOR_PHASE_1B_LOW();
     MOTOR_PHASE_2A_LOW();
@@ -453,8 +458,8 @@ extern void printer_init(void)
     tp.head = tp.tail = 0;
     tp.state = TPSTATE_IDLE;
    
-    TPSetSpeed(2);
-    pt_sleep();   
+    TPSetSpeed(2);  //设置加热时间
+    pt_sleep();  //进入休眠   
 }
 
 /**
@@ -2096,7 +2101,7 @@ void TPSelfTest_3(void)
 }
 
 /**
- * @brief  打印机设备初始化
+ * @brief  管脚和资源初始化
  */
 void pt48d_dev_init(void)
 {
@@ -2105,30 +2110,31 @@ void pt48d_dev_init(void)
     pt_timer_init();
 }
 
-/**********************************************
-return :   0  :  IDLE
-           1  :  BUSY
-           2  :  缺纸
-           3  :  打印头故障
-**********************************************/
+/**
+ * @brief  获取打印机状态
+ * @retval 0-IDLE  1-BUSY  2-缺纸   3-打印头故障
+ */
 s32 dev_printer_get_status(void)
 {
     s32 i;
     int16_t temp;
-    
-    if (TPGetPaperDetect() != 0) //无纸
+
+    //检测是否有纸
+    if(TPGetPaperDetect() != 0) 
     {
-        return PT_STATUS_NOPAPER;  //无纸返回
+        return PT_STATUS_NOPAPER;  //无纸
     }
 
-    if (tp.state != TPSTATE_IDLE)
+    if(tp.state != TPSTATE_IDLE)
     {
         return PT_STATUS_BUSYING;
     }
 
+    //检测温度判定和保存
     if(get_temperature() > TP_TEMPERATURE_MAX)
     {
-        for(i = 0; i < 10; i++)  /*连续判断10次温度都超过最大限制温度才认为是温度超过了*/
+        //连续判断10次温度都超过最大限制温度才认为是温度超过了
+        for(i = 0; i < 10; i++)  
         {
             temp = PrtGetTemperature();
             if(temp < TP_TEMPERATURE_MAX)
@@ -2137,7 +2143,7 @@ s32 dev_printer_get_status(void)
             }
             dev_user_delay_ms(5);
         }
-        //temp = PrtGetTemperature();
+        
         set_temperature(temp);
         if(temp > TP_TEMPERATURE_MAX)
         {

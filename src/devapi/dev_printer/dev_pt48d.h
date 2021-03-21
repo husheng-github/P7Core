@@ -31,17 +31,17 @@ typedef enum
 typedef struct
 {
     TPSTATE_T state;
-    uint8_t phase;  //阶段
+    uint8_t phase;  
     uint16_t repeat;  
-
     uint32_t heat;
     uint32_t heat_setting;
-#if defined(NEW_HEAT_TIME)
+    
+  #if defined(NEW_HEAT_TIME)
     uint32_t heat_adj;
-#endif
+  #endif
+  
     uint32_t heat_remain;
     uint32_t feed_time[TP_MAX_STROBE_STEP];
-
     uint8_t feed_step;      // 单个Strobe加热时马达步进计数器
     uint8_t strobe_step;    // 单个点行加热时需要分的Strobe数的计数器
     uint8_t accel;
@@ -51,17 +51,7 @@ typedef struct
     uint8_t heat_max_cnt;
     uint8_t heat_cnt;
     uint8_t heat_buf[((LineDot/TP_MAX_HEAT_STROBE)+(64-7)-1)/(64-7)][LineDot/8];
-#if defined(HISTORY_HEAT_ENABLE)
-    uint8_t history_cnt;
-    uint8_t last_max_cnt;
-    uint8_t first;
-    uint32_t heat_percent;
-#endif
-
     int32_t markbefore;
-#if defined(DOUBLE_HEAT_ENABLE)
-    uint8_t heat_line_cnt;
-#endif
 } TP_T;
 
 typedef enum _PRINTER_STATUS

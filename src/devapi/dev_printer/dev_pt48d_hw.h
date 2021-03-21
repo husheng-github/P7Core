@@ -1,3 +1,8 @@
+/**
+ * @file dev_pt48d_hw.h
+ * @brief 打印机硬件初始化代码
+ * @since 2021.3.20  胡圣整理代码
+ */
 
 #ifndef     _PT48D_DEV_H_
 #define     _PT48D_DEV_H_
@@ -39,7 +44,7 @@ extern void DBG_DAT(u8 *data,u16 len);
 
 #define TIMER_TP         0x03  //马达步进使用时钟
 #define TIMER_TP_DET     0x02  //打印纸及温度检测时钟//定时器冲突，改为定时器2
-#define TIMER1_MS_TO_CNT(ms)    ((uint32_t)(ms*1000)) // to us
+#define TIMER1_MS_TO_CNT(ms)    ((uint32_t)(ms*1000))  //to us
 
 u8 pt_get_exist(void);
 void pt_ctl_slp_sleep(u8 flg);
